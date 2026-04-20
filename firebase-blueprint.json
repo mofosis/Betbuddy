@@ -1,0 +1,125 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A user of the betting platform",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "balance": { "type": "number", "description": "Fictional currency balance" },
+        "photoURL": { "type": "string" },
+        "wins": { "type": "integer" },
+        "fcmToken": { "type": "string", "description": "FCM token for push notifications" },
+        "balanceHistory": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "timestamp": { "type": "number" },
+              "balance": { "type": "number" }
+            }
+          }
+        }
+      },
+      "required": ["uid", "displayName", "email", "balance"]
+    },
+    "Bet": {
+      "title": "Bet",
+      "description": "A bet between users",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "creatorId": { "type": "string" },
+        "creatorName": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "status": { 
+          "type": "string", 
+          "enum": ["pending", "active", "completed", "cancelled"] 
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "resolvedAt": { "type": "string", "format": "date-time" },
+        "outcomes": { "type": "array", "items": { "type": "string" } },
+        "participants": { "type": "object" },
+        "totalPot": { "type": "number" },
+        "winnerOutcomeIndex": { "type": "integer" },
+        "amount": { "type": "number" }
+      },
+      "required": ["creatorId", "title", "status", "createdAt", "outcomes", "participants", "totalPot"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "A notification for a user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "type": { "type": "string", "enum": ["invite", "update", "resolved", "bet_invite"] },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "betId": { "type": "string" },
+        "requestingUserId": { "type": "string" },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "type", "title", "message", "read", "createdAt"]
+    },
+    "Activity": {
+      "title": "Activity",
+      "description": "A public activity log entry",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "type": { "type": "string", "enum": ["bet_created", "bet_joined", "bet_resolved"] },
+        "betId": { "type": "string" },
+        "betTitle": { "type": "string" },
+        "amount": { "type": "number" },
+        "outcomeName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "userName", "type", "betId", "betTitle", "createdAt"]
+    },
+    "FeatureRequest": {
+      "title": "FeatureRequest",
+      "description": "A user-submitted feature request",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "upvotes": { "type": "array", "items": { "type": "string" } },
+        "status": { "type": "string", "enum": ["pending", "planned", "completed"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "userName", "title", "description", "upvotes", "status", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile and balance"
+    },
+    "/bets/{betId}": {
+      "schema": "Bet",
+      "description": "Bet details and status"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "User notifications"
+    },
+    "/activities/{activityId}": {
+      "schema": "Activity",
+      "description": "Public activity feed"
+    },
+    "/feature_requests/{requestId}": {
+      "schema": "FeatureRequest",
+      "description": "User feature requests"
+    }
+  }
+}

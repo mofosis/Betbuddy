@@ -1,0 +1,177 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Fields:
+    //   - uid: string (required)
+    //   - displayName: string (required)
+    //   - email: string (required)
+    //   - balance: number (required, >= 0)
+    //   - photoURL: string (optional)
+    //
+    // Collection: bets
+    // Fields:
+    //   - creatorId: string (required)
+    //   - creatorName: string (required)
+    //   - opponentId: string (optional)
+    //   - opponentName: string (optional)
+    //   - title: string (required)
+    //   - description: string (optional)
+    //   - amount: number (required, > 0)
+    //   - status: string (required, ['pending', 'active', 'completed', 'cancelled'])
+    //   - winnerId: string (optional)
+    //   - createdAt: timestamp (required)
+    //   - resolvedAt: timestamp (optional)
+    //
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.email == "martinmosteil@gmail.com" && 
+        request.auth.token.email_verified == true
+      );
+    }
+
+    function isValidUser(data) {
+      return data.uid is string &&
+             data.displayName is string && data.displayName.size() > 0 &&
+             data.displayNameLower is string &&
+             data.email is string &&
+             data.balance is number && data.balance >= 0 &&
+             (!('wins' in data) || data.wins is number) &&
+             (!('losses' in data) || data.losses is number) &&
+             (!('theme' in data) || data.theme in ['dark', 'light', 'cyber', 'retro', 'brutal', 'midnight', 'neon', 'brutal-flat', 'brutal-dark']) &&
+             (!('fcmToken' in data) || data.fcmToken is string) &&
+             (!('balanceHistory' in data) || data.balanceHistory is list) &&
+             (!('lastBetResolvedAt' in data) || data.lastBetResolvedAt is timestamp || data.lastBetResolvedAt == null) &&
+             (!('lastChallengeDeductionAt' in data) || data.lastChallengeDeductionAt is number || data.lastChallengeDeductionAt == null);
+    }
+
+    function isValidBet(data) {
+      return (!('creatorId' in data) || data.creatorId is string) &&
+             (!('creatorName' in data) || data.creatorName is string) &&
+             (!('title' in data) || (data.title is string && data.title.size() > 0 && data.title.size() < 100)) &&
+             (!('description' in data) || (data.description is string && data.description.size() < 500)) &&
+             (!('status' in data) || data.status in ['pending', 'active', 'completed', 'cancelled']) &&
+             (!('outcomes' in data) || (data.outcomes is list && data.outcomes.size() >= 2 && data.outcomes.size() <= 10)) &&
+             (!('totalPot' in data) || data.totalPot is number) &&
+             (!('amount' in data) || data.amount is number) &&
+             (!('createdAt' in data) || data.createdAt is timestamp) &&
+             (!('updatedAt' in data) || data.updatedAt is timestamp) &&
+             (!('resolvedAt' in data) || data.resolvedAt is timestamp) &&
+             (!('participants' in data) || data.participants is map) &&
+             (!('invitedUserIds' in data) || data.invitedUserIds is list) &&
+             (!('winnerOutcomeIndex' in data) || data.winnerOutcomeIndex is number || data.winnerOutcomeIndex == null) &&
+             (!('isUpdated' in data) || data.isUpdated is bool) &&
+             (!('opponentId' in data) || data.opponentId is string || data.opponentId == null) &&
+             (!('opponentName' in data) || data.opponentName is string || data.opponentName == null) &&
+             (!('winnerId' in data) || data.winnerId is string || data.winnerId == null);
+    }
+
+    function isValidNotification(data) {
+      return data.userId is string &&
+             data.type in ['invite', 'update', 'resolved', 'bet_invite'] &&
+             data.title is string && data.title.size() > 0 &&
+             data.message is string &&
+             data.read is bool &&
+             data.createdAt is timestamp &&
+             (!('betId' in data) || data.betId is string || data.betId == null) &&
+             (!('requestingUserId' in data) || data.requestingUserId is string || data.requestingUserId == null);
+    }
+
+    // User Rules
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && 
+                    request.resource.data.balance == 1000 &&
+                    request.resource.data.wins == 0 &&
+                    request.resource.data.losses == 0;
+      allow update: if isAuthenticated() && (
+                    (isValidUser(request.resource.data) && 
+                     request.resource.data.uid == resource.data.uid &&
+                     request.resource.data.email == resource.data.email) ||
+                    isAdmin()
+                  );
+      allow delete: if isAdmin();
+    }
+
+    // Bet Rules
+    match /bets/{betId} {
+      allow get, list: if isAuthenticated();
+      
+      allow create: if isAuthenticated() && 
+                    isValidBet(request.resource.data) && 
+                    request.resource.data.creatorId == request.auth.uid;
+
+      allow update: if isAuthenticated() && 
+                    (
+                      (
+                        isValidBet(request.resource.data) &&
+                        request.resource.data.creatorId == resource.data.creatorId &&
+                        (
+                          // Case 1: Creator actions (Resolve, Cancel, Edit, Reactivate)
+                          (resource.data.creatorId == request.auth.uid) ||
+                          // Case 2: Joining or Leaving a bet (Anyone)
+                          (
+                            (resource.data.status == 'pending' || resource.data.status == 'active') &&
+                            // Ensure only participants, totalPot, status, invitedUserIds, and updatedAt are changing for non-creators
+                            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participants', 'totalPot', 'status', 'updatedAt', 'invitedUserIds']) &&
+                            request.resource.data.createdAt == resource.data.createdAt
+                          )
+                        )
+                      ) ||
+                      isAdmin()
+                    );
+      allow delete: if isAdmin();
+    }
+
+    // Notification Rules
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidNotification(request.resource.data);
+      allow update: if isAuthenticated() && (
+                    (resource.data.userId == request.auth.uid && 
+                     request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read'])) ||
+                    isAdmin()
+                  );
+      allow delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    // Activity Rules
+    match /activities/{activityId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow delete: if isAdmin();
+    }
+
+    // Feature Request Rules
+    match /feature_requests/{requestId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['upvotes']) ||
+        isAdmin()
+      );
+      allow delete: if isAdmin();
+    }
+
+    // System Rules
+    match /system/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated(); // Allow any authenticated user to process challenge deductions
+    }
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "name": "BetBuddy",
+  "description": "A social betting platform using fictional currency to place and track bets with friends.",
+  "requestFramePermissions": []
+}
