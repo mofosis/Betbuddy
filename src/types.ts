@@ -8,16 +8,13 @@ export interface UserProfile {
   losses: number;
   photoURL?: string;
   theme?: 'dark' | 'light' | 'cyber' | 'brutal' | 'midnight' | 'neon' | 'brutal-flat' | 'brutal-dark';
-  createdAt?: any;
-  politicalOrientation?: string;
-  balanceHistory?: { timestamp: any; balance: number }[];
-  fcmToken?: string | null;
-  lastBetResolvedAt?: any;
-  lastChallengeDeductionAt?: any;
+  createdAt?: string;
+  isAdmin?: boolean;
+  lastBetResolvedAt?: string | null;
+  lastChallengeDeductionAt?: number | null;
 }
 
 export type BetStatus = 'pending' | 'active' | 'completed' | 'cancelled';
-
 export type NotificationType = 'invite' | 'update' | 'resolved' | 'bet_invite';
 
 export interface Activity {
@@ -30,7 +27,7 @@ export interface Activity {
   betTitle: string;
   amount?: number;
   outcomeName?: string;
-  createdAt: any;
+  createdAt: string;
 }
 
 export interface FeatureRequest {
@@ -39,9 +36,9 @@ export interface FeatureRequest {
   userName: string;
   title: string;
   description: string;
-  upvotes: string[]; // Array of user UIDs
+  upvotes: string[];
   status: 'pending' | 'planned' | 'completed';
-  createdAt: any;
+  createdAt: string;
 }
 
 export interface Notification {
@@ -51,9 +48,8 @@ export interface Notification {
   title: string;
   message: string;
   betId?: string;
-  requestingUserId?: string;
   read: boolean;
-  createdAt: any;
+  createdAt: string;
 }
 
 export interface BetParticipant {
@@ -70,23 +66,13 @@ export interface Bet {
   title: string;
   description?: string;
   status: BetStatus;
-  createdAt: any; // Timestamp
-  resolvedAt?: any; // Timestamp
-  
-  // Multi-outcome/Multi-participant fields
-  outcomes: string[]; 
+  createdAt: string;
+  resolvedAt?: string;
+  updatedAt?: string;
+  outcomes: string[];
   participants: { [uid: string]: BetParticipant };
   totalPot: number;
   winnerOutcomeIndex?: number | null;
   invitedUserIds?: string[];
-  
-  // Legacy/Compatibility fields
-  amount: number; 
-  opponentId?: string | null;
-  opponentName?: string | null;
-  invitedId?: string | null;
-  winnerId?: string | null;
-  isUpdated?: boolean;
-  updatedAt?: any;
-  opponentStake?: number;
+  amount: number;
 }
