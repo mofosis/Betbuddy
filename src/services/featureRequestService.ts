@@ -1,42 +1,38 @@
-import { db } from '../firebase';
-import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { FeatureRequest } from '../types';
 
 export async function submitFeatureRequest(userId: string, userName: string, title: string, description: string) {
-  return addDoc(collection(db, 'feature_requests'), {
-    userId,
-    userName,
-    title,
-    description,
-    upvotes: [],
-    status: 'pending',
-    createdAt: serverTimestamp()
+  const res = await fetch('/api/feature-requests', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, userName, title, description }),
   });
+  if (!res.ok) throw new Error('Failed to submit feature request');
+  return res.json();
 }
 
-export async function toggleUpvote(requestId: string, userId: string, isUpvoted: boolean) {
-  const requestRef = doc(db, 'feature_requests', requestId);
-  return updateDoc(requestRef, {
-    upvotes: isUpvoted ? arrayRemove(userId) : arrayUnion(userId)
-  });
+export async function toggleUpvote(requestId: string, _userId: string, _isUpvoted: boolean) {
+  const res = await fetch(`/api/feature-requests/${requestId}/upvote`, { method: 'PUT' });
+  if (!res.ok) throw new Error('Failed to toggle upvote');
+  return res.json();
 }
 
-export function subscribeToFeatureRequests(callback: (requests: FeatureRequest[]) => void) {
-  const q = query(
-    collection(db, 'feature_requests'),
-    orderBy('createdAt', 'desc')
-  );
+export async function fetchFeatureRequests(): Promise<FeatureRequest[]> {
+  const res = await fetch('/api/feature-requests');
+  if (!res.ok) return [];
+  return res.json();
+}
 
-  return onSnapshot(q, (snapshot) => {
-    const requests = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    } as FeatureRequest));
-    callback(requests);
-  });
+export function subscribeToFeatureRequests(callback: (requests: FeatureRequest[]) => void): () => void {
+  fetchFeatureRequests().then(callback);
+  return () => {};
 }
 
 export async function updateRequestStatus(requestId: string, status: FeatureRequest['status']) {
-  const requestRef = doc(db, 'feature_requests', requestId);
-  return updateDoc(requestRef, { status });
+  const res = await fetch(`/api/feature-requests/${requestId}/status`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status }),
+  });
+  if (!res.ok) throw new Error('Failed to update status');
+  return res.json();
 }

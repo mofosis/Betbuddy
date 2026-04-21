@@ -1,27 +1,32 @@
-import { db } from '../firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { NotificationType } from '../types';
+import { Notification, NotificationType } from '../types';
 
+export async function fetchNotifications(): Promise<Notification[]> {
+  const res = await fetch('/api/notifications');
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export async function markNotificationRead(id: string): Promise<void> {
+  await fetch(`/api/notifications/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ read: true }),
+  });
+}
+
+export async function markAllNotificationsRead(): Promise<void> {
+  await fetch('/api/notifications', { method: 'PUT' });
+}
+
+export async function deleteNotification(id: string): Promise<void> {
+  await fetch(`/api/notifications/${id}`, { method: 'DELETE' });
+}
+
+// Server handles notification creation — kept for call-site compatibility
 export const createNotification = async (
-  userId: string,
-  type: NotificationType,
-  title: string,
-  message: string,
-  betId?: string,
-  requestingUserId?: string
-) => {
-  try {
-    await addDoc(collection(db, 'notifications'), {
-      userId,
-      type,
-      title,
-      message,
-      betId: betId || null,
-      requestingUserId: requestingUserId || null,
-      read: false,
-      createdAt: serverTimestamp(),
-    });
-  } catch (error) {
-    console.error('Error creating notification:', error);
-  }
-};
+  _userId: string,
+  _type: NotificationType,
+  _title: string,
+  _message: string,
+  _betId?: string,
+) => {};

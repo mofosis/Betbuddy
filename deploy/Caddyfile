@@ -1,0 +1,19 @@
+auth.mofosis.de {
+    reverse_proxy authelia:9091
+}
+
+betbuddy.mofosis.de {
+    forward_auth authelia:9091 {
+        uri /api/authz/forward-auth
+        copy_headers Remote-User Remote-Name Remote-Groups Remote-Email
+    }
+    reverse_proxy betbuddy:3000
+}
+
+vinoreveal.mofosis.de {
+    forward_auth authelia:9091 {
+        uri /api/authz/forward-auth
+        copy_headers Remote-User Remote-Name Remote-Groups Remote-Email
+    }
+    reverse_proxy vinoreveal:3001
+}

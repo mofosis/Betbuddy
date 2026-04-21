@@ -1,30 +1,16 @@
-import { db } from '../firebase';
-import { collection, addDoc, serverTimestamp, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { Activity } from '../types';
 
-export async function logActivity(activity: Omit<Activity, 'id' | 'createdAt'>) {
-  try {
-    await addDoc(collection(db, 'activities'), {
-      ...activity,
-      createdAt: serverTimestamp()
-    });
-  } catch (error) {
-    console.error('Error logging activity:', error);
-  }
+export async function logActivity(_activity: Omit<Activity, 'id' | 'createdAt'>) {
+  // Activities are logged server-side after bet operations
 }
 
-export function subscribeToActivities(callback: (activities: Activity[]) => void) {
-  const q = query(
-    collection(db, 'activities'),
-    orderBy('createdAt', 'desc'),
-    limit(20)
-  );
+export async function fetchActivities(): Promise<Activity[]> {
+  const res = await fetch('/api/activities');
+  if (!res.ok) return [];
+  return res.json();
+}
 
-  return onSnapshot(q, (snapshot) => {
-    const activities = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    } as Activity));
-    callback(activities);
-  });
+export function subscribeToActivities(callback: (activities: Activity[]) => void): () => void {
+  fetchActivities().then(callback);
+  return () => {};
 }
