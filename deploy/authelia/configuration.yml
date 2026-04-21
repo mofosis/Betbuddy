@@ -1,0 +1,65 @@
+---
+server:
+  host: 0.0.0.0
+  port: 9091
+
+log:
+  level: info
+
+# Authelia >= 4.38: jwt_secret moved here
+identity_validation:
+  reset_password:
+    jwt_secret: '{{ env "AUTHELIA_JWT_SECRET" }}'
+
+authentication_backend:
+  file:
+    path: /config/users_database.yml
+    password:
+      algorithm: argon2id
+      argon2:
+        variant: argon2id
+        iterations: 3
+        memory: 65536
+        parallelism: 4
+        key_length: 32
+        salt_length: 16
+
+session:
+  name: authelia_session
+  secret: '{{ env "AUTHELIA_SESSION_SECRET" }}'
+  same_site: lax
+  inactivity: 5m
+  expiration: 1h
+  remember_me: 1M
+  cookies:
+    - domain: mofosis.de
+      authelia_url: https://auth.mofosis.de
+      default_redirection_url: https://betbuddy.mofosis.de
+  redis:
+    host: redis
+    port: 6379
+
+storage:
+  encryption_key: '{{ env "AUTHELIA_STORAGE_ENCRYPTION_KEY" }}'
+  postgres:
+    address: tcp://postgres:5432
+    database: authelia
+    schema: public
+    username: postgres
+    password: '{{ env "AUTHELIA_STORAGE_POSTGRES_PASSWORD" }}'
+
+access_control:
+  default_policy: deny
+  rules:
+    - domain:
+        - betbuddy.mofosis.de
+        - vinoreveal.mofosis.de
+      policy: one_factor
+
+notifier:
+  filesystem:
+    filename: /config/notification.txt
+
+telemetry:
+  metrics:
+    enabled: false

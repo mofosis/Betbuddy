@@ -1,0 +1,19 @@
+---
+users:
+  # Admin user - has access to admin features in BetBuddy
+  # Generate password hash: docker run authelia/authelia:latest authelia crypto hash generate argon2 --password 'your-password'
+  admin:
+    displayname: Admin
+    password: "$argon2id$v=19$m=65536,t=3,p=4$REPLACE_WITH_GENERATED_HASH"
+    email: admin@mofosis.de
+    groups:
+      - admins
+      - users
+
+  # Regular user example
+  user1:
+    displayname: "User 1"
+    password: "$argon2id$v=19$m=65536,t=3,p=4$REPLACE_WITH_GENERATED_HASH"
+    email: user1@mofosis.de
+    groups:
+      - users
